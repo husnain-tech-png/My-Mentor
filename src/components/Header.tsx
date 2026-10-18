@@ -1,5 +1,5 @@
 import React from 'react';
-import { AppPage, MentorPreferences, UserMode, UserProfile } from '../types';
+import { AppPage, CloudUser, MentorPreferences, UserMode, UserProfile } from '../types';
 
 interface HeaderProps {
   currentPage: AppPage;
@@ -10,6 +10,11 @@ interface HeaderProps {
   onToggleIslamicMode: () => void;
   onToggleSidebar: () => void;
   unreadCount?: number;
+  cloudUser: CloudUser | null;
+  onOpenSupabaseModal: () => void;
+  onOpenInstallModal: () => void;
+  isStandalone: boolean;
+  canInstallDirectly: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -19,7 +24,12 @@ export const Header: React.FC<HeaderProps> = ({
   profile,
   preferences,
   onToggleIslamicMode,
-  onToggleSidebar
+  onToggleSidebar,
+  cloudUser,
+  onOpenSupabaseModal,
+  onOpenInstallModal,
+  isStandalone,
+  canInstallDirectly
 }) => {
   return (
     <header className="app-header">
@@ -111,7 +121,68 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
       </nav>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+        {/* Supabase Cloud Sync Button */}
+        <button
+          onClick={onOpenSupabaseModal}
+          title={cloudUser ? `Supabase Cloud Connected: ${cloudUser.email}` : 'Connect Supabase Cloud to save data'}
+          className="btn btn-secondary"
+          style={{
+            padding: '5px 10px',
+            fontSize: '0.8rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            borderRadius: 'var(--radius-md)',
+            border: cloudUser ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid var(--color-border)'
+          }}
+        >
+          <span
+            style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              background: cloudUser ? '#22c55e' : '#94a3b8',
+              boxShadow: cloudUser ? '0 0 8px #22c55e' : 'none'
+            }}
+          />
+          <span className="d-sm-inline" style={{ display: 'none' }}>
+            {cloudUser ? 'Cloud Saved' : 'Cloud Sync'}
+          </span>
+          <span style={{ fontSize: '0.9rem' }}>☁️</span>
+        </button>
+
+        {/* Install App Button */}
+        {!isStandalone ? (
+          <button
+            onClick={onOpenInstallModal}
+            title="Install MyMentor on PC or Mobile"
+            className="btn btn-secondary"
+            style={{
+              padding: '5px 10px',
+              fontSize: '0.8rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              borderRadius: 'var(--radius-md)',
+              background: 'rgba(99, 102, 241, 0.1)',
+              borderColor: 'rgba(99, 102, 241, 0.3)',
+              color: '#a5b4fc'
+            }}
+          >
+            <span>📲</span>
+            <span className="d-sm-inline" style={{ display: 'none' }}>Install</span>
+          </button>
+        ) : (
+          <span
+            className="badge badge-subtle"
+            title="Running in Standalone Installed App mode"
+            style={{ fontSize: '0.7rem', padding: '4px 8px', color: '#4ade80', background: 'rgba(34, 197, 94, 0.1)' }}
+          >
+            ✓ App
+          </span>
+        )}
+
         {/* Quick Islamic Mode Switch */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }} title="Toggle Islamic Mode (Quran & Hadith Citations)">
           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', display: 'none' }} className="d-sm-inline">

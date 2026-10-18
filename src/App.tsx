@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { AppPage, AppState, Conversation, IslamicReflection, MentorPreferences, ReminderRule, UserMode, UserProfile } from './types';
+import {
+  AppPage,
+  AppState,
+  CloudUser,
+  Conversation,
+  IslamicReflection,
+  MentorPreferences,
+  ReminderRule,
+  UserMode,
+  UserProfile
+} from './types';
 import {
   clearAllUserData,
   DEFAULT_APP_STATE,
@@ -9,6 +19,14 @@ import {
   saveStoredAppState,
   saveStoredReminders
 } from './services/storage';
+import {
+  getCurrentUser,
+  onAuthStateChange,
+  syncConversationToCloud,
+  deleteConversationFromCloud,
+  syncReminderToCloud,
+  deleteReminderFromCloud
+} from './services/supabaseSync';
 import { BIOGRAPHIES } from './data/biographies';
 
 // Components
@@ -22,12 +40,61 @@ import { BiographyDetail } from './components/BiographyDetail';
 import { IslamicReflectionsView } from './components/IslamicReflectionsView';
 import { RemindersView } from './components/RemindersView';
 import { SettingsView } from './components/SettingsView';
+import { SupabaseSyncModal } from './components/SupabaseSyncModal';
+import { InstallAppModal } from './components/InstallAppModal';
+import { InstallAppBanner } from './components/InstallAppBanner';
 
 export const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(() => loadStoredAppState());
   const [reminders, setReminders] = useState<ReminderRule[]>(() => loadStoredReminders());
 
-  // Persist state changes
+  // Cloud & Supabase State
+  const [cloudUser, setCloudUser] = useState<CloudUser | null>(null);
+  const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
+
+  // PWA & Installation State
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [canInstallDirectly, setCanInstallDirectly] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(() => {
+    return (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true
+    );
+  });
+  const [isIOS] = useState(() => /iPhone|iPad|iPod/.test(navigator.userAgent));
+
+  // Listen to PWA installation events
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setCanInstallDirectly(true);
+    };
+
+    const handleAppInstalled = () => {
+      setIsStandalone(true);
+      setDeferredPrompt(null);
+      setCanInstallDirectly(false);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  // Check Supabase Auth User
+  useEffect(() => {
+    getCurrentUser().then(user => setCloudUser(user));
+    const unsubscribe = onAuthStateChange(user => setCloudUser(user));
+    return () => unsubscribe();
+  }, []);
+
+  // Persist state changes locally
   useEffect(() => {
     saveStoredAppState(appState);
   }, [appState]);
@@ -36,11 +103,31 @@ export const App: React.FC = () => {
     saveStoredReminders(reminders);
   }, [reminders]);
 
-  const activeConversation = appState.conversations.find(c => c.id === appState.activeConversationId) || appState.conversations[0];
+  const activeConversation =
+    appState.conversations.find(c => c.id === appState.activeConversationId) ||
+    appState.conversations[0];
 
   // Navigation handler
   const handleNavigate = (page: AppPage) => {
     setAppState(prev => ({ ...prev, page, sidebarOpen: false }));
+  };
+
+  // Direct PWA Install trigger
+  const handleInstallDirectly = async () => {
+    if (deferredPrompt) {
+      try {
+        deferredPrompt.prompt();
+        const choiceResult = await deferredPrompt.userChoice;
+        if (choiceResult.outcome === 'accepted') {
+          setDeferredPrompt(null);
+          setCanInstallDirectly(false);
+        }
+      } catch (err) {
+        console.warn('Install prompt error:', err);
+      }
+    } else {
+      setIsInstallModalOpen(true);
+    }
   };
 
   // Mode selection from Welcome
@@ -54,7 +141,6 @@ export const App: React.FC = () => {
 
   // Onboarding completion
   const handleOnboardingComplete = (profile: UserProfile, preferences: MentorPreferences) => {
-    // Generate tailored initial greeting message
     const personalizedGreeting = `Salam and welcome, ${profile.displayName}! I have adjusted my guidance to match your stage as a **${profile.stage?.replace('-', ' ')}** focusing on **${profile.goal || 'growth and mastery'}**.\n\nMy tone is set to **${preferences.tone}**, delivering **${preferences.answerFormat}** recommendations. Feel free to ask your most critical question today.`;
 
     const newConversation: Conversation = {
@@ -82,6 +168,9 @@ export const App: React.FC = () => {
       conversations: [newConversation, ...prev.conversations],
       activeConversationId: newConversation.id
     }));
+
+    // Auto-sync new conversation to Supabase if logged in
+    syncConversationToCloud(newConversation);
   };
 
   // Toggle Islamic Mode globally
@@ -126,13 +215,17 @@ export const App: React.FC = () => {
       activeConversationId: newConv.id,
       page: 'chat'
     }));
+
+    syncConversationToCloud(newConv);
   };
 
   const handleUpdateConversation = (updated: Conversation) => {
     setAppState(prev => ({
       ...prev,
-      conversations: prev.conversations.map(c => c.id === updated.id ? updated : c)
+      conversations: prev.conversations.map(c => (c.id === updated.id ? updated : c))
     }));
+    // Sync to Supabase in background
+    syncConversationToCloud(updated);
   };
 
   const handleDeleteConversation = (id: string) => {
@@ -145,6 +238,8 @@ export const App: React.FC = () => {
         activeConversationId: fallback ? fallback.id : DEFAULT_APP_STATE.conversations[0].id
       };
     });
+    // Remove from Supabase
+    deleteConversationFromCloud(id);
   };
 
   const handleSelectConversation = (id: string) => {
@@ -201,19 +296,24 @@ export const App: React.FC = () => {
       activeConversationId: newConv.id,
       page: 'chat'
     }));
+
+    syncConversationToCloud(newConv);
   };
 
   // Reminder rules actions
   const handleAddReminder = (rule: ReminderRule) => {
     setReminders(prev => [rule, ...prev]);
+    syncReminderToCloud(rule);
   };
 
   const handleUpdateReminder = (updated: ReminderRule) => {
-    setReminders(prev => prev.map(r => r.id === updated.id ? updated : r));
+    setReminders(prev => prev.map(r => (r.id === updated.id ? updated : r)));
+    syncReminderToCloud(updated);
   };
 
   const handleDeleteReminder = (id: string) => {
     setReminders(prev => prev.filter(r => r.id !== id));
+    deleteReminderFromCloud(id);
   };
 
   // Reset all
@@ -223,11 +323,44 @@ export const App: React.FC = () => {
     setReminders([...DEFAULT_REMINDERS]);
   };
 
-  // Selected biography for detail view
-  const currentBio = BIOGRAPHIES.find(b => b.id === appState.selectedBiographyId) || BIOGRAPHIES[0];
+  // Merge or apply data fetched from Supabase
+  const handleApplyCloudData = (cloudData: {
+    profile?: any;
+    preferences?: any;
+    conversations?: any[];
+    reminders?: any[];
+  }) => {
+    setAppState(prev => ({
+      ...prev,
+      profile: cloudData.profile || prev.profile,
+      preferences: cloudData.preferences || prev.preferences,
+      conversations:
+        cloudData.conversations && cloudData.conversations.length > 0
+          ? cloudData.conversations
+          : prev.conversations,
+      activeConversationId:
+        cloudData.conversations && cloudData.conversations.length > 0
+          ? cloudData.conversations[0].id
+          : prev.activeConversationId
+    }));
+
+    if (cloudData.reminders && cloudData.reminders.length > 0) {
+      setReminders(cloudData.reminders);
+    }
+  };
+
+  const currentBio =
+    BIOGRAPHIES.find(b => b.id === appState.selectedBiographyId) || BIOGRAPHIES[0];
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--color-bg-primary)' }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        background: 'var(--color-bg-primary)'
+      }}
+    >
       {/* Global Navigation Header */}
       <Header
         currentPage={appState.page}
@@ -237,6 +370,11 @@ export const App: React.FC = () => {
         preferences={appState.preferences}
         onToggleIslamicMode={handleToggleIslamicMode}
         onToggleSidebar={handleToggleSidebar}
+        cloudUser={cloudUser}
+        onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
+        onOpenInstallModal={() => setIsInstallModalOpen(true)}
+        isStandalone={isStandalone}
+        canInstallDirectly={canInstallDirectly}
       />
 
       {/* Slide-out Sidebar Drawer */}
@@ -251,15 +389,16 @@ export const App: React.FC = () => {
         onNavigate={handleNavigate}
         currentPage={appState.page}
         profile={appState.profile}
+        cloudUser={cloudUser}
+        onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
+        onOpenInstallModal={() => setIsInstallModalOpen(true)}
+        isStandalone={isStandalone}
       />
 
       {/* Main Content Router */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {appState.page === 'welcome' && (
-          <WelcomeScreen
-            onSelectMode={handleSelectMode}
-            onNavigate={handleNavigate}
-          />
+          <WelcomeScreen onSelectMode={handleSelectMode} onNavigate={handleNavigate} />
         )}
 
         {appState.page === 'onboarding' && (
@@ -316,13 +455,46 @@ export const App: React.FC = () => {
           <SettingsView
             appState={appState}
             reminders={reminders}
-            onUpdateProfile={(profile) => setAppState(prev => ({ ...prev, profile }))}
-            onUpdatePreferences={(preferences) => setAppState(prev => ({ ...prev, preferences }))}
-            onSwitchMode={(mode) => setAppState(prev => ({ ...prev, mode }))}
+            onUpdateProfile={profile => setAppState(prev => ({ ...prev, profile }))}
+            onUpdatePreferences={preferences => setAppState(prev => ({ ...prev, preferences }))}
+            onSwitchMode={mode => setAppState(prev => ({ ...prev, mode }))}
             onResetAllData={handleResetAllData}
+            cloudUser={cloudUser}
+            onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
+            onOpenInstallModal={() => setIsInstallModalOpen(true)}
+            isStandalone={isStandalone}
           />
         )}
       </main>
+
+      {/* Install App Floating Banner */}
+      <InstallAppBanner
+        onOpenInstallModal={() => setIsInstallModalOpen(true)}
+        canInstallDirectly={canInstallDirectly}
+        onInstallDirectly={handleInstallDirectly}
+        isStandalone={isStandalone}
+      />
+
+      {/* Install App Step-by-Step Modal */}
+      <InstallAppModal
+        isOpen={isInstallModalOpen}
+        onClose={() => setIsInstallModalOpen(false)}
+        canInstallDirectly={canInstallDirectly}
+        onInstallDirectly={handleInstallDirectly}
+        isStandalone={isStandalone}
+        isIOS={isIOS}
+      />
+
+      {/* Supabase Cloud Sync & Account Hub Modal */}
+      <SupabaseSyncModal
+        isOpen={isSupabaseModalOpen}
+        onClose={() => setIsSupabaseModalOpen(false)}
+        appState={appState}
+        reminders={reminders}
+        onApplyCloudData={handleApplyCloudData}
+        currentUser={cloudUser}
+        onUserChange={user => setCloudUser(user)}
+      />
     </div>
   );
 };

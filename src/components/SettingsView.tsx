@@ -10,6 +10,10 @@ interface SettingsViewProps {
   onUpdatePreferences: (preferences: MentorPreferences) => void;
   onSwitchMode: (mode: UserMode) => void;
   onResetAllData: () => void;
+  cloudUser?: { email?: string; displayName?: string } | null;
+  onOpenSupabaseModal?: () => void;
+  onOpenInstallModal?: () => void;
+  isStandalone?: boolean;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -18,7 +22,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onUpdateProfile,
   onUpdatePreferences,
   onSwitchMode,
-  onResetAllData
+  onResetAllData,
+  cloudUser,
+  onOpenSupabaseModal,
+  onOpenInstallModal,
+  isStandalone
 }) => {
   const [profile, setProfile] = useState<UserProfile>(
     appState.profile || {
@@ -431,6 +439,75 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               )}
             </div>
           </div>
+        </div>
+
+        {/* Supabase Cloud Sync Card */}
+        <div className="card" style={{ padding: 'var(--space-6)', border: '1px solid rgba(56, 189, 248, 0.25)', background: 'rgba(56, 189, 248, 0.03)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>☁️</span> Supabase Cloud Sync & Multi-Device Backup
+            </h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: cloudUser ? '#22c55e' : '#94a3b8',
+                  boxShadow: cloudUser ? '0 0 8px #22c55e' : 'none'
+                }}
+              />
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: cloudUser ? '#4ade80' : 'var(--color-text-secondary)' }}>
+                {cloudUser ? `Connected (${cloudUser.email || cloudUser.displayName})` : 'Not Connected'}
+              </span>
+            </div>
+          </div>
+
+          <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.5, marginBottom: 'var(--space-4)' }}>
+            Connect Supabase to securely save your profile, mentor chat logs, and daily reminders in the cloud so you can open MyMentor on any PC or mobile phone without losing progress.
+          </p>
+
+          <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+            <button
+              onClick={onOpenSupabaseModal}
+              className="btn btn-primary btn-sm"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <span>☁️</span> Manage Cloud Sync & Account
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile & PC App Installation Card */}
+        <div className="card" style={{ padding: 'var(--space-6)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>📲</span> Mobile & PC App Installation
+            </h2>
+            <span
+              className="badge"
+              style={{
+                background: isStandalone ? 'rgba(34, 197, 94, 0.15)' : 'rgba(99, 102, 241, 0.15)',
+                color: isStandalone ? '#4ade80' : '#a5b4fc',
+                fontSize: '0.75rem'
+              }}
+            >
+              {isStandalone ? '✓ Standalone App Mode' : 'Web Browser Mode'}
+            </span>
+          </div>
+
+          <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.5, marginBottom: 'var(--space-4)' }}>
+            MyMentor is a Progressive Web App (PWA). You can install it natively on your Windows PC, Mac, iPhone, iPad, or Android phone for instant 1-tap launch, distraction-free windowing, and offline access.
+          </p>
+
+          <button
+            onClick={onOpenInstallModal}
+            className="btn btn-secondary btn-sm"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <span>{isStandalone ? 'ℹ️' : '📲'}</span>
+            <span>{isStandalone ? 'View Installation Details' : 'Install App or View Instructions'}</span>
+          </button>
         </div>
 
         {/* Data & Privacy Controls */}

@@ -12,6 +12,10 @@ interface SidebarProps {
   onNavigate: (page: AppPage) => void;
   currentPage: AppPage;
   profile: UserProfile | null;
+  cloudUser?: { email?: string; displayName?: string } | null;
+  onOpenSupabaseModal?: () => void;
+  onOpenInstallModal?: () => void;
+  isStandalone?: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -24,7 +28,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onDeleteConversation,
   onNavigate,
   currentPage,
-  profile
+  profile,
+  cloudUser,
+  onOpenSupabaseModal,
+  onOpenInstallModal,
+  isStandalone
 }) => {
   return (
     <>
@@ -133,6 +141,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
             >
               ⚙️ Preferences & Profile
             </button>
+            {onOpenSupabaseModal && (
+              <button
+                onClick={() => { onOpenSupabaseModal(); onClose(); }}
+                className="nav-link"
+                style={{ width: '100%', justifyContent: 'flex-start', color: cloudUser ? '#4ade80' : 'var(--color-accent-blue)' }}
+              >
+                ☁️ {cloudUser ? 'Supabase (Connected)' : 'Supabase Cloud Sync'}
+              </button>
+            )}
+            {!isStandalone && onOpenInstallModal && (
+              <button
+                onClick={() => { onOpenInstallModal(); onClose(); }}
+                className="nav-link"
+                style={{ width: '100%', justifyContent: 'flex-start', color: '#a5b4fc' }}
+              >
+                📲 Install App on Device
+              </button>
+            )}
           </div>
         </div>
 

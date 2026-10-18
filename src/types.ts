@@ -199,3 +199,21 @@ export interface AppState {
   selectedBiographyId: string | null;
   sidebarOpen: boolean;
 }
+
+// --- Cloud & Supabase Sync ---
+
+export type CloudSyncStatus = 'idle' | 'syncing' | 'synced' | 'error' | 'offline';
+
+export interface CloudUser {
+  id: string;
+  email?: string;
+  displayName?: string;
+}
+
+export interface SupabaseConfig {
+  url: string;
+  anonKey: string;
+  autoSync: boolean;
+  lastSyncedAt?: number;
+}
+
