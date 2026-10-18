@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AnswerFormat, AppState, ChallengeLevel, MentorPreferences, ReminderRule, SubjectLens, Tone, UserMode, UserProfile } from '../types';
 import { exportUserDataJSON } from '../services/storage';
+import { GROQ_MODELS, testGroqConnection, getEffectiveGroqApiKey, getEffectiveGroqModel } from '../services/groqService';
 
 interface SettingsViewProps {
   appState: AppState;
@@ -32,6 +33,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [preferences, setPreferences] = useState<MentorPreferences>(appState.preferences);
   const [savedNotice, setSavedNotice] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [testStatus, setTestStatus] = useState<{ loading: boolean; ok?: boolean; message?: string }>({ loading: false });
+
+  const effectiveKey = getEffectiveGroqApiKey(preferences);
+  const effectiveModel = getEffectiveGroqModel(preferences);
+
+  const handleTestGroq = async () => {
+    if (!effectiveKey) {
+      setTestStatus({ loading: false, ok: false, message: 'Please enter a Groq API key first.' });
+      return;
+    }
+    setTestStatus({ loading: true });
+    const result = await testGroqConnection(effectiveKey, effectiveModel);
+    setTestStatus({
+      loading: false,
+      ok: result.ok,
+      message: result.message
+    });
+  };
 
   const handleSave = () => {
     onUpdateProfile(profile);
@@ -287,6 +307,128 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 onChange={(e) => setPreferences({ ...preferences, customInstruction: e.target.value })}
                 placeholder="e.g. Always include a 1-sentence bottom-line takeaway at the very end."
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Groq Conversational AI Chatbot Configuration */}
+        <div className="card" style={{ padding: 'var(--space-6)', border: '1px solid rgba(129, 140, 248, 0.35)', background: 'linear-gradient(135deg, rgba(26, 34, 53, 0.95) 0%, rgba(30, 35, 65, 0.8) 100%)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: 'var(--space-4)' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <span className="badge badge-green" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-accent-green)', display: 'inline-block' }} />
+                  ⚡ Groq Cloud Integration
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                  Ultra-Fast Llama & Mixtral Inference
+                </span>
+              </div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white' }}>
+                Conversational AI Chatbot Engine
+              </h2>
+            </div>
+
+            <a
+              href="https://console.groq.com/keys"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-secondary btn-sm"
+              style={{ fontSize: '0.8rem' }}
+            >
+              Get Free Groq Key ↗
+            </a>
+          </div>
+
+          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', lineHeight: 1.5, marginBottom: 'var(--space-4)' }}>
+            Connect to Groq's high-speed API to power your mentor with true real-time LLM intelligence. Your key is stored securely in your browser's local storage and used directly for client-side completions.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            {/* API Key Input */}
+            <div className="form-group">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <label className="form-label" htmlFor="groqApiKeyInput">
+                  Groq API Key (starts with <code>gsk_...</code>)
+                </label>
+                {(import.meta as any).env?.VITE_GROQ_API_KEY && (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-primary)' }}>
+                    ✓ Loaded from .env.local
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                <input
+                  id="groqApiKeyInput"
+                  type={showApiKey ? 'text' : 'password'}
+                  className="form-input"
+                  placeholder="gsk_••••••••••••••••••••••••••••••••••••••••••••"
+                  value={preferences.groqApiKey || ''}
+                  onChange={(e) => setPreferences({ ...preferences, groqApiKey: e.target.value })}
+                  style={{ fontFamily: showApiKey ? 'inherit' : 'monospace' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="btn btn-secondary"
+                  title={showApiKey ? 'Hide key' : 'Show key'}
+                  style={{ padding: '0 12px' }}
+                >
+                  {showApiKey ? '🙈' : '👁️'}
+                </button>
+                {preferences.groqApiKey && (
+                  <button
+                    type="button"
+                    onClick={() => setPreferences({ ...preferences, groqApiKey: '' })}
+                    className="btn btn-secondary"
+                    title="Clear key"
+                    style={{ padding: '0 12px', color: 'var(--color-error)' }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Model Selector */}
+            <div className="form-group">
+              <label className="form-label">Active Model</label>
+              <select
+                className="form-select"
+                value={preferences.groqModel || 'llama-3.3-70b-versatile'}
+                onChange={(e) => setPreferences({ ...preferences, groqModel: e.target.value })}
+              >
+                {GROQ_MODELS.map(m => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} — {m.description}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Connection Test Bar */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-2)', paddingTop: 'var(--space-2)' }}>
+              <button
+                type="button"
+                onClick={handleTestGroq}
+                disabled={testStatus.loading}
+                className="btn btn-secondary btn-sm"
+              >
+                {testStatus.loading ? 'Testing Connection...' : '🔌 Test Groq Connection'}
+              </button>
+
+              {testStatus.message && (
+                <div style={{
+                  fontSize: '0.8rem',
+                  color: testStatus.ok ? 'var(--color-accent-green)' : 'var(--color-error)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <span>{testStatus.ok ? '✓' : '⚠️'}</span>
+                  <span>{testStatus.message}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>

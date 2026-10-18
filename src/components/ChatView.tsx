@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage, Citation, Conversation, MentorPreferences, UserProfile, VoiceState } from '../types';
 import { SUGGESTED_PROMPTS } from '../data/defaultPrompts';
 import { speechService } from '../services/speechService';
-import { generateMentorReply } from '../services/mentorEngine';
+import { generateMentorReplyAsync } from '../services/mentorEngine';
+import { getEffectiveGroqApiKey, getEffectiveGroqModel } from '../services/groqService';
 
 interface ChatViewProps {
   conversation: Conversation;
@@ -20,9 +21,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
 }) => {
   const [inputText, setInputText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [streamingText, setStreamingText] = useState('');
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');
   const [activeSpeechMsgId, setActiveSpeechMsgId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const groqKey = getEffectiveGroqApiKey(preferences);
+  const groqModel = getEffectiveGroqModel(preferences);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -33,7 +38,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   useEffect(() => {
     scrollToBottom();
-  }, [conversation.messages, isGenerating]);
+  }, [conversation.messages, isGenerating, streamingText]);
 
   // Voice Speech-to-Text handler
   const handleToggleVoiceInput = () => {
@@ -76,7 +81,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleSendMessage = (textToSend?: string) => {
+  const handleSendMessage = async (textToSend?: string) => {
     const query = (textToSend || inputText).trim();
     if (!query || isGenerating) return;
 
@@ -98,14 +103,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
     onUpdateConversation(updatedConversation);
     setInputText('');
     setIsGenerating(true);
+    setStreamingText('');
 
-    // Simulate natural thinking delay and response generation
-    setTimeout(() => {
-      const output = generateMentorReply({
+    try {
+      const output = await generateMentorReplyAsync({
         userMessage: query,
         history: newMessages.map(m => ({ role: m.role, text: m.text })),
         profile,
-        preferences
+        preferences,
+        onChunk: (chunkText) => {
+          setStreamingText(chunkText);
+        }
       });
 
       const mentorMsg: ChatMessage = {
@@ -122,9 +130,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
         messages: [...newMessages, mentorMsg],
         updatedAt: Date.now()
       });
-
+    } catch (err: any) {
+      console.error('Error generating mentor response:', err);
+    } finally {
       setIsGenerating(false);
-    }, 700);
+      setStreamingText('');
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -216,7 +227,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
         justifyContent: 'space-between',
         fontSize: '0.8rem'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
           <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{conversation.title}</span>
           <span className="badge badge-indigo" style={{ textTransform: 'capitalize' }}>
             Tone: {preferences.tone}
@@ -227,6 +238,16 @@ export const ChatView: React.FC<ChatViewProps> = ({
           {preferences.islamicModeEnabled && (
             <span className="badge badge-amber">
               ☪️ Islamic Lens
+            </span>
+          )}
+          {groqKey ? (
+            <span className="badge badge-green" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-accent-green)', display: 'inline-block' }} />
+              ⚡ Groq: {groqModel}
+            </span>
+          ) : (
+            <span className="badge" style={{ opacity: 0.75 }} title="Connect your Groq API key in Settings to activate real-time LLM chat.">
+              🔌 Offline Knowledge Base
             </span>
           )}
         </div>
@@ -328,8 +349,35 @@ export const ChatView: React.FC<ChatViewProps> = ({
           );
         })}
 
-        {/* Loading Indicator */}
-        {isGenerating && (
+        {/* Live Streaming Message Row */}
+        {isGenerating && streamingText && (
+          <div className="message-row mentor">
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              background: preferences.islamicModeEnabled ? 'rgba(167, 139, 250, 0.2)' : 'rgba(129, 140, 248, 0.2)',
+              color: preferences.islamicModeEnabled ? '#c4b5fd' : 'var(--color-accent-primary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '0.9rem',
+              fontWeight: 700,
+              flexShrink: 0
+            }}>
+              {preferences.islamicModeEnabled ? '☪' : 'M'}
+            </div>
+            <div className={`message-bubble mentor ${preferences.islamicModeEnabled ? 'islamic-theme' : ''}`}>
+              <div>
+                {renderFormattedText(streamingText)}
+                <span style={{ display: 'inline-block', width: '7px', height: '14px', background: 'var(--color-accent-primary)', marginLeft: '4px', verticalAlign: 'middle', animation: 'pulse 0.8s infinite' }} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Loading Indicator (Waiting for first token) */}
+        {isGenerating && !streamingText && (
           <div className="message-row mentor">
             <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(129, 140, 248, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               M
@@ -338,7 +386,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-accent-primary)', animation: 'pulse 1s infinite' }}></div>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-accent-primary)', animation: 'pulse 1s infinite 0.2s' }}></div>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-accent-primary)', animation: 'pulse 1s infinite 0.4s' }}></div>
-              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginLeft: '6px' }}>Consulting sources & formulating guidance...</span>
+              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginLeft: '6px' }}>
+                {groqKey ? `Consulting Groq (${groqModel})...` : 'Consulting sources & formulating guidance...'}
+              </span>
             </div>
           </div>
         )}

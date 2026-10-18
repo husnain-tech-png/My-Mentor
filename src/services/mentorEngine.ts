@@ -1,6 +1,7 @@
 import { Citation, MentorPreferences, UserProfile } from '../types';
 import { BIOGRAPHIES } from '../data/biographies';
 import { ISLAMIC_REFLECTIONS } from '../data/reflections';
+import { getEffectiveGroqApiKey, getEffectiveGroqModel, streamGroqChatCompletion } from './groqService';
 
 interface MentorResponseOptions {
   userMessage: string;
@@ -12,6 +13,9 @@ interface MentorResponseOptions {
 export interface GeneratedMentorOutput {
   text: string;
   citations: Citation[];
+  provider?: 'groq' | 'local';
+  model?: string;
+  error?: string;
 }
 
 export function generateMentorReply({
@@ -230,6 +234,60 @@ Most obstacles in study, career, or entrepreneurship come down to one of three b
 
   return {
     text: fullText,
-    citations
+    citations,
+    provider: 'local'
+  };
+}
+
+export async function generateMentorReplyAsync({
+  userMessage,
+  history,
+  profile,
+  preferences,
+  onChunk
+}: MentorResponseOptions & {
+  onChunk?: (streamedText: string) => void;
+}): Promise<GeneratedMentorOutput> {
+  const apiKey = getEffectiveGroqApiKey(preferences);
+  const model = getEffectiveGroqModel(preferences);
+
+  if (apiKey) {
+    try {
+      const messagesForGroq = [
+        ...history,
+        { role: 'user' as const, text: userMessage }
+      ];
+      const groqResult = await streamGroqChatCompletion({
+        apiKey,
+        model,
+        profile,
+        preferences,
+        messages: messagesForGroq,
+        onChunk
+      });
+      return {
+        text: groqResult.text,
+        citations: groqResult.citations,
+        provider: 'groq',
+        model
+      };
+    } catch (err: any) {
+      console.warn('Groq API call failed, falling back to local mentor engine:', err);
+      const fallback = generateMentorReply({ userMessage, history, profile, preferences });
+      const warningNote = `\n\n> ⚠️ *Note: Groq API encountered an issue (${err?.message || 'Connection error'}). Delivered via offline mentor knowledge base.*`;
+      return {
+        text: fallback.text + warningNote,
+        citations: fallback.citations,
+        provider: 'local',
+        error: err?.message
+      };
+    }
+  }
+
+  // Fallback to local deterministic mentor engine
+  const localOutput = generateMentorReply({ userMessage, history, profile, preferences });
+  return {
+    ...localOutput,
+    provider: 'local'
   };
 }

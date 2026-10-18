@@ -37,6 +37,8 @@ export interface MentorPreferences {
   subjectLens?: SubjectLens;
   customInstruction?: string;          // max 250 chars
   islamicModeEnabled: boolean;
+  groqApiKey?: string;
+  groqModel?: string;
 }
 
 // --- Conversations & Messages ---
