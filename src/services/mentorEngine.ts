@@ -1,7 +1,7 @@
 import { Citation, MentorPreferences, UserProfile } from '../types';
 import { BIOGRAPHIES } from '../data/biographies';
 import { ISLAMIC_REFLECTIONS } from '../data/reflections';
-import { getEffectiveGroqApiKey, getEffectiveGroqModel, streamGroqChatCompletion } from './groqService';
+import { getUserProvidedGroqApiKey, getEffectiveGroqModel, streamGroqChatCompletion, isProxyAvailable } from './groqService';
 
 interface MentorResponseOptions {
   userMessage: string;
@@ -90,16 +90,16 @@ export function generateMentorReply({
   if (query.includes('abdur rahman') || query.includes('dullani') || (query.includes('market') && matchedBio?.id === 'abdur-rahman-bin-auf')) {
     const arBio = BIOGRAPHIES.find(b => b.id === 'abdur-rahman-bin-auf')!;
     citations.push({
-      label: 'Sahih al-Bukhari #2048 & Siyar A‘lam al-Nubala (Vol. 1)',
+      label: 'Sahih al-Bukhari #2048 & Siyar A'lam al-Nubala (Vol. 1)',
       sourceType: 'hadith',
       url: 'https://sunnah.com/bukhari:2048',
       details: 'Historical account of Abdur Rahman bin Auf arriving in Madinah and asking for the marketplace.',
       lastVerified: '2026-09-15'
     });
 
-    mainBody = `### The "Dullani ‘ala al-Suq" (Show Me the Market) Framework
+    mainBody = `### The "Dullani 'ala al-Suq" (Show Me the Market) Framework
 
-When Abdur Rahman bin Auf arrived penniless in Madinah, his host Sa‘d ibn al-Rabi‘ generously offered him half his wealth and property. Abdur Rahman's response became an enduring blueprint for self-reliance and commercial dignity:
+When Abdur Rahman bin Auf arrived penniless in Madinah, his host Sa'd ibn al-Rabi' generously offered him half his wealth and property. Abdur Rahman's response became an enduring blueprint for self-reliance and commercial dignity:
 
 > *"May Allah bless you in your family and wealth; show me where the market is."*
 
@@ -112,7 +112,7 @@ When Abdur Rahman bin Auf arrived penniless in Madinah, his host Sa‘d ibn al-R
 If you're starting a project or seeking income: don't build in isolation for 6 months. Go where customers and employers are already trading time or money, and ask: *"What small, immediate problem can I solve for you right now?"*`;
   } else if (query.includes('itqan') || query.includes('excellence') || query.includes('craft')) {
     citations.push({
-      label: 'Shu‘ab al-Iman (al-Bayhaqi #4931) on Itqan',
+      label: 'Shu'ab al-Iman (al-Bayhaqi #4931) on Itqan',
       sourceType: 'hadith',
       url: 'https://sunnah.com',
       details: 'Hadith: "Verily, Allah loves that when one of you does a job, they perform it with excellence."',
@@ -248,17 +248,21 @@ export async function generateMentorReplyAsync({
 }: MentorResponseOptions & {
   onChunk?: (streamedText: string) => void;
 }): Promise<GeneratedMentorOutput> {
-  const apiKey = getEffectiveGroqApiKey(preferences);
+  const userKey = getUserProvidedGroqApiKey(preferences);
   const model = getEffectiveGroqModel(preferences);
 
-  if (apiKey) {
+  // Determine if Groq is available (either user key or server proxy)
+  const proxyReady = !userKey ? await isProxyAvailable() : false;
+  const groqAvailable = !!userKey || proxyReady;
+
+  if (groqAvailable) {
     try {
       const messagesForGroq = [
         ...history,
         { role: 'user' as const, text: userMessage }
       ];
       const groqResult = await streamGroqChatCompletion({
-        apiKey,
+        apiKey: userKey || null,  // null = use server proxy
         model,
         profile,
         preferences,

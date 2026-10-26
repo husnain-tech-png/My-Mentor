@@ -31,7 +31,35 @@ export const GROQ_MODELS: GroqModelOption[] = [
   }
 ];
 
-export function getEffectiveGroqApiKey(preferences: MentorPreferences): string | undefined {
+/**
+ * Check if the server-side proxy is available and has a Groq key configured.
+ * Returns true if the proxy health endpoint reports groqKeyConfigured.
+ */
+let _proxyAvailable: boolean | null = null;
+
+export async function isProxyAvailable(): Promise<boolean> {
+  if (_proxyAvailable !== null) return _proxyAvailable;
+
+  try {
+    const resp = await fetch('/api/health', { signal: AbortSignal.timeout(3000) });
+    if (resp.ok) {
+      const data = await resp.json();
+      _proxyAvailable = !!data.groqKeyConfigured;
+      return _proxyAvailable;
+    }
+  } catch {
+    // Proxy not available (e.g. running vite dev without the server)
+  }
+  _proxyAvailable = false;
+  return false;
+}
+
+/**
+ * Returns the user's manually-entered Groq API key (from Settings UI),
+ * or the VITE_ env var for local development.
+ * Returns undefined if neither is set.
+ */
+export function getUserProvidedGroqApiKey(preferences: MentorPreferences): string | undefined {
   if (preferences.groqApiKey && preferences.groqApiKey.trim().length > 0) {
     return preferences.groqApiKey.trim();
   }
@@ -40,6 +68,20 @@ export function getEffectiveGroqApiKey(preferences: MentorPreferences): string |
     return envKey.trim();
   }
   return undefined;
+}
+
+/**
+ * Determines if the Groq AI is available — either through the server proxy
+ * or through a user-supplied API key. This is used to show the "connected" badge.
+ */
+export async function isGroqAvailable(preferences: MentorPreferences): Promise<boolean> {
+  if (getUserProvidedGroqApiKey(preferences)) return true;
+  return await isProxyAvailable();
+}
+
+export function getEffectiveGroqApiKey(preferences: MentorPreferences): string | undefined {
+  // For backward compat: returns user key or undefined (proxy doesn't need a key on client)
+  return getUserProvidedGroqApiKey(preferences);
 }
 
 export function getEffectiveGroqModel(preferences: MentorPreferences): string {
@@ -173,48 +215,78 @@ export function extractCitationsFromText(rawText: string): { cleanText: string; 
 }
 
 export async function testGroqConnection(
-  apiKey: string,
+  apiKeyOrNull: string | null,
   model: string = 'llama-3.3-70b-versatile'
 ): Promise<{ ok: boolean; message: string; latencyMs?: number }> {
+  // If a user-provided key is given, call Groq directly
+  if (apiKeyOrNull) {
+    const startTime = Date.now();
+    try {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKeyOrNull.trim()}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content: 'Respond with the single word: "READY"' }],
+          max_tokens: 5,
+          temperature: 0.1
+        })
+      });
+
+      const latencyMs = Date.now() - startTime;
+
+      if (!response.ok) {
+        const errorJson = await response.json().catch(() => null);
+        const errMsg = errorJson?.error?.message || `HTTP ${response.status}: ${response.statusText}`;
+        return { ok: false, message: errMsg, latencyMs };
+      }
+
+      const data = await response.json();
+      const content = data?.choices?.[0]?.message?.content?.trim();
+      return {
+        ok: true,
+        message: `Connected successfully! Response: "${content}" (${latencyMs}ms)`,
+        latencyMs
+      };
+    } catch (err: any) {
+      return {
+        ok: false,
+        message: err?.message || 'Network error connecting to api.groq.com'
+      };
+    }
+  }
+
+  // Otherwise, test via the server proxy
   const startTime = Date.now();
   try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const response = await fetch('/api/groq/test', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey.trim()}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: 'user', content: 'Respond with the single word: "READY"' }],
-        max_tokens: 5,
-        temperature: 0.1
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model })
     });
 
     const latencyMs = Date.now() - startTime;
-
-    if (!response.ok) {
-      const errorJson = await response.json().catch(() => null);
-      const errMsg = errorJson?.error?.message || `HTTP ${response.status}: ${response.statusText}`;
-      return { ok: false, message: errMsg, latencyMs };
-    }
-
     const data = await response.json();
-    const content = data?.choices?.[0]?.message?.content?.trim();
     return {
-      ok: true,
-      message: `Connected successfully! Response: "${content}" (${latencyMs}ms)`,
-      latencyMs
+      ok: data.ok,
+      message: data.message || (data.ok ? 'Connected via server proxy!' : 'Server proxy test failed'),
+      latencyMs: data.latencyMs || latencyMs
     };
   } catch (err: any) {
     return {
       ok: false,
-      message: err?.message || 'Network error connecting to api.groq.com'
+      message: 'Server proxy is not available. Run the server with: npm start'
     };
   }
 }
 
+/**
+ * Streams a chat completion, routing through the server proxy when no user API key is set.
+ * Falls back to direct Groq calls if a user-provided key exists.
+ */
 export async function streamGroqChatCompletion({
   apiKey,
   model,
@@ -223,7 +295,7 @@ export async function streamGroqChatCompletion({
   messages,
   onChunk
 }: {
-  apiKey: string;
+  apiKey: string | null;
   model: string;
   profile: UserProfile | null;
   preferences: MentorPreferences;
@@ -241,19 +313,33 @@ export async function streamGroqChatCompletion({
     }))
   ];
 
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const requestBody = {
+    model,
+    messages: formattedMessages,
+    temperature: 0.7,
+    max_tokens: 2048,
+    stream: true
+  };
+
+  // Determine endpoint: proxy or direct Groq
+  let fetchUrl: string;
+  const fetchHeaders: Record<string, string> = {
+    'Content-Type': 'application/json'
+  };
+
+  if (apiKey) {
+    // User provided their own key — call Groq directly
+    fetchUrl = 'https://api.groq.com/openai/v1/chat/completions';
+    fetchHeaders['Authorization'] = `Bearer ${apiKey.trim()}`;
+  } else {
+    // Use the server-side proxy (key is on the server)
+    fetchUrl = '/api/groq/chat';
+  }
+
+  const response = await fetch(fetchUrl, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey.trim()}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model,
-      messages: formattedMessages,
-      temperature: 0.7,
-      max_tokens: 2048,
-      stream: true
-    })
+    headers: fetchHeaders,
+    body: JSON.stringify(requestBody)
   });
 
   if (!response.ok) {
