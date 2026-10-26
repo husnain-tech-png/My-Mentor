@@ -1,6 +1,6 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { createProxyMiddleware } from 'http-proxy-middleware';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -16,7 +16,7 @@ app.use(express.json({ limit: '2mb' }));
 
 // --- API Key from server environment (NEVER exposed to frontend) ---
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
-const DEFAULT_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+const DEFAULT_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
 
 if (!GROQ_API_KEY) {
   console.warn('⚠️  WARNING: GROQ_API_KEY is not set in environment variables!');
@@ -163,7 +163,7 @@ const distPath = path.join(__dirname, '..', 'dist');
 app.use(express.static(distPath));
 
 // SPA fallback: serve index.html for all non-API routes
-app.get('*', (_req, res) => {
+app.use((_req, res) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });
 

@@ -3,7 +3,7 @@ import { ChatMessage, Citation, Conversation, MentorPreferences, UserProfile, Vo
 import { SUGGESTED_PROMPTS } from '../data/defaultPrompts';
 import { speechService } from '../services/speechService';
 import { generateMentorReplyAsync } from '../services/mentorEngine';
-import { getEffectiveGroqApiKey, getEffectiveGroqModel } from '../services/groqService';
+import { getEffectiveGroqApiKey, getEffectiveGroqModel, isGroqAvailable } from '../services/groqService';
 
 interface ChatViewProps {
   conversation: Conversation;
@@ -26,8 +26,18 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [activeSpeechMsgId, setActiveSpeechMsgId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const groqKey = getEffectiveGroqApiKey(preferences);
+  const [isGroqOnline, setIsGroqOnline] = useState<boolean>(() => !!getEffectiveGroqApiKey(preferences));
   const groqModel = getEffectiveGroqModel(preferences);
+
+  useEffect(() => {
+    let isMounted = true;
+    isGroqAvailable(preferences).then(online => {
+      if (isMounted) setIsGroqOnline(online);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [preferences]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -240,7 +250,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
               ☪️ Islamic Lens
             </span>
           )}
-          {groqKey ? (
+          {isGroqOnline ? (
             <span className="badge badge-green" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-accent-green)', display: 'inline-block' }} />
               ⚡ Groq: {groqModel}
@@ -387,7 +397,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-accent-primary)', animation: 'pulse 1s infinite 0.2s' }}></div>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-accent-primary)', animation: 'pulse 1s infinite 0.4s' }}></div>
               <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginLeft: '6px' }}>
-                {groqKey ? `Consulting Groq (${groqModel})...` : 'Consulting sources & formulating guidance...'}
+                {isGroqOnline ? `Consulting Groq (${groqModel})...` : 'Consulting sources & formulating guidance...'}
               </span>
             </div>
           </div>

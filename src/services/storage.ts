@@ -12,7 +12,7 @@ export const DEFAULT_PREFERENCES: MentorPreferences = {
   subjectLens: 'startup-basics',
   customInstruction: '',
   islamicModeEnabled: false,
-  groqModel: 'llama-3.3-70b-versatile'
+  groqModel: 'openai/gpt-oss-120b'
 };
 
 export const INITIAL_CONVERSATION: Conversation = {

@@ -90,7 +90,7 @@ export function generateMentorReply({
   if (query.includes('abdur rahman') || query.includes('dullani') || (query.includes('market') && matchedBio?.id === 'abdur-rahman-bin-auf')) {
     const arBio = BIOGRAPHIES.find(b => b.id === 'abdur-rahman-bin-auf')!;
     citations.push({
-      label: 'Sahih al-Bukhari #2048 & Siyar A'lam al-Nubala (Vol. 1)',
+      label: "Sahih al-Bukhari #2048 & Siyar A'lam al-Nubala (Vol. 1)",
       sourceType: 'hadith',
       url: 'https://sunnah.com/bukhari:2048',
       details: 'Historical account of Abdur Rahman bin Auf arriving in Madinah and asking for the marketplace.',
@@ -112,7 +112,7 @@ When Abdur Rahman bin Auf arrived penniless in Madinah, his host Sa'd ibn al-Rab
 If you're starting a project or seeking income: don't build in isolation for 6 months. Go where customers and employers are already trading time or money, and ask: *"What small, immediate problem can I solve for you right now?"*`;
   } else if (query.includes('itqan') || query.includes('excellence') || query.includes('craft')) {
     citations.push({
-      label: 'Shu'ab al-Iman (al-Bayhaqi #4931) on Itqan',
+      label: "Shu'ab al-Iman (al-Bayhaqi #4931) on Itqan",
       sourceType: 'hadith',
       url: 'https://sunnah.com',
       details: 'Hadith: "Verily, Allah loves that when one of you does a job, they perform it with excellence."',

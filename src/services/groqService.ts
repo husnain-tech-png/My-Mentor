@@ -10,24 +10,34 @@ export interface GroqModelOption {
 
 export const GROQ_MODELS: GroqModelOption[] = [
   {
+    id: 'openai/gpt-oss-120b',
+    name: 'GPT OSS 120B (Recommended Flagship)',
+    description: 'Flagship reasoning model on Groq, exceptional at strategic mentorship, multi-step planning, and life coaching.'
+  },
+  {
+    id: 'openai/gpt-oss-20b',
+    name: 'GPT OSS 20B Instant',
+    description: 'Ultra-fast, lowest latency for rapid conversational dialogues.'
+  },
+  {
+    id: 'qwen/qwen3.8-27b',
+    name: 'Qwen 3.8 27B',
+    description: 'Highly capable instruction-following model with sharp structured reasoning.'
+  },
+  {
+    id: 'allam-2-7b',
+    name: 'Allam 2 7B (Arabic & Islamic Wisdom)',
+    description: 'Specialized model with deep grounding in Arabic and Islamic ethical literature.'
+  },
+  {
     id: 'llama-3.3-70b-versatile',
     name: 'Llama 3.3 70B Versatile',
-    description: 'Flagship open-weights model, highly capable at multi-step reasoning and mentoring.'
+    description: 'Meta Llama 3.3 model for balanced reasoning.'
   },
   {
     id: 'llama-3.1-8b-instant',
     name: 'Llama 3.1 8B Instant',
-    description: 'Ultra-fast, lowest latency for rapid interactive dialogues.'
-  },
-  {
-    id: 'mixtral-8x7b-32768',
-    name: 'Mixtral 8x7B (32k Context)',
-    description: 'MoE architecture with long context window for deep document analysis.'
-  },
-  {
-    id: 'gemma2-9b-it',
-    name: 'Gemma 2 9B IT',
-    description: 'Google Gemma 2 model optimized for clear instruction following.'
+    description: 'Fast 8B parameter model.'
   }
 ];
 
@@ -92,7 +102,7 @@ export function getEffectiveGroqModel(preferences: MentorPreferences): string {
   if (typeof envModel === 'string' && envModel.trim().length > 0) {
     return envModel.trim();
   }
-  return 'llama-3.3-70b-versatile';
+  return 'openai/gpt-oss-120b';
 }
 
 export function buildSystemPrompt(
@@ -216,7 +226,7 @@ export function extractCitationsFromText(rawText: string): { cleanText: string; 
 
 export async function testGroqConnection(
   apiKeyOrNull: string | null,
-  model: string = 'llama-3.3-70b-versatile'
+  model: string = 'openai/gpt-oss-120b'
 ): Promise<{ ok: boolean; message: string; latencyMs?: number }> {
   // If a user-provided key is given, call Groq directly
   if (apiKeyOrNull) {

@@ -7,10 +7,15 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "start": "node server/index.js",
+    "server": "node server/index.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "vite-plugin-pwa": "^2.0.0"

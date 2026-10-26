@@ -48,12 +48,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const effectiveModel = getEffectiveGroqModel(preferences);
 
   const handleTestGroq = async () => {
-    if (!effectiveKey) {
-      setTestStatus({ loading: false, ok: false, message: 'Please enter a Groq API key first.' });
-      return;
-    }
-    setTestStatus({ loading: true });
-    const result = await testGroqConnection(effectiveKey, effectiveModel);
+    setTestStatus({ loading: true, message: undefined });
+    const result = await testGroqConnection(effectiveKey || null, effectiveModel);
     setTestStatus({
       loading: false,
       ok: result.ok,
