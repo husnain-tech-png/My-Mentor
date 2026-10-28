@@ -398,7 +398,11 @@ export const App: React.FC = () => {
       {/* Main Content Router */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {appState.page === 'welcome' && (
-          <WelcomeScreen onSelectMode={handleSelectMode} onNavigate={handleNavigate} />
+          <WelcomeScreen
+            onSelectMode={handleSelectMode}
+            onNavigate={handleNavigate}
+            onAskPrompt={handleNewConversationWithPrompt}
+          />
         )}
 
         {appState.page === 'onboarding' && (

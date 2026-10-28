@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Biography } from '../types';
 import { BIOGRAPHIES } from '../data/biographies';
 
 interface BiographyLibraryProps {
@@ -29,65 +28,85 @@ export const BiographyLibrary: React.FC<BiographyLibraryProps> = ({
   });
 
   return (
-    <div style={{ padding: 'var(--space-8) var(--space-4)', maxWidth: '1100px', margin: '0 auto', width: '100%' }}>
+    <div style={{ padding: 'var(--space-8) var(--space-4)', maxWidth: '1140px', margin: '0 auto', width: '100%' }}>
       {/* Header */}
-      <div style={{ marginBottom: 'var(--space-6)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: 'var(--space-2)' }}>
-          <span className="badge badge-amber">Rigorously Verified Knowledge</span>
+      <div style={{ marginBottom: 'var(--space-8)', textAlign: 'left' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          <span className="badge badge-amber">🏛️ Audited Historical Knowledge</span>
           <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-            Updated Sept 2026
+            Primary Source Citations & Lessons
           </span>
         </div>
-        <h1 style={{ fontSize: '2.2rem', fontWeight: 800, marginBottom: 'var(--space-2)' }}>
-          Historical Biographies & Practical Lessons
+        <h1 style={{ fontSize: 'clamp(2rem, 4vw, 2.6rem)', fontWeight: 800, marginBottom: '8px', color: '#ffffff', letterSpacing: '-0.025em' }}>
+          Historical Biographies & Practical Wisdom
         </h1>
-        <p style={{ color: 'var(--color-text-secondary)', maxWidth: '780px', lineHeight: 1.6 }}>
-          We discard mythologized folklore. Every figure in this library is audited with primary source citations, separating verifiable historical facts from modern interpretations and institutional caveats.
+        <p style={{ color: 'var(--color-text-secondary)', maxWidth: '820px', lineHeight: 1.65, fontSize: '1rem' }}>
+          We discard mythologized folklore. Every figure in this library is audited with primary source citations, strictly separating verifiable historical facts from modern interpretations and institutional caveats.
         </p>
       </div>
 
       {/* Search & Tag Filter Bar */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', marginBottom: 'var(--space-8)' }}>
-        <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-          <div style={{ flex: 1, position: 'relative' }}>
-            <input
-              type="text"
-              placeholder="Search by name, era, principle (e.g. Abdur Rahman, Buffett, trade, focus)..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="form-input"
-              style={{ paddingLeft: '40px' }}
-            />
-            <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }}>
-              🔍
-            </span>
-          </div>
+        <div style={{ position: 'relative' }}>
+          <input
+            type="text"
+            placeholder="Search by name, era, principle (e.g. Abdur Rahman, Buffett, trade, focus)..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="form-input"
+            style={{
+              paddingLeft: '44px',
+              height: '48px',
+              fontSize: '0.95rem',
+              borderRadius: 'var(--radius-xl)'
+            }}
+          />
+          <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', opacity: 0.6, fontSize: '1.1rem' }}>
+            🔍
+          </span>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}
+            >
+              ✕ Clear
+            </button>
+          )}
         </div>
 
-        {/* Tags */}
+        {/* Filter Tags */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Filter Tag:</span>
+          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Filter Topic:
+          </span>
           {allTags.map(tag => (
             <button
               key={tag}
               onClick={() => setSelectedTag(tag)}
-              className={`badge ${selectedTag === tag ? 'badge-indigo' : ''}`}
+              className="badge"
               style={{
                 cursor: 'pointer',
                 textTransform: 'capitalize',
-                padding: '4px 10px',
-                background: selectedTag === tag ? 'rgba(129, 140, 248, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-                border: selectedTag === tag ? '1px solid var(--color-accent-primary)' : '1px solid var(--color-border)'
+                padding: '6px 12px',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                background: selectedTag === tag ? 'rgba(99, 102, 241, 0.22)' : 'rgba(255, 255, 255, 0.04)',
+                border: selectedTag === tag ? '1px solid var(--color-accent-primary)' : '1px solid var(--color-border)',
+                color: selectedTag === tag ? '#ffffff' : 'var(--color-text-secondary)',
+                transition: 'all 0.15s ease'
               }}
             >
               {tag.replace('-', ' ')}
             </button>
           ))}
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginLeft: 'auto' }}>
+            Showing {filteredBiographies.length} figure{filteredBiographies.length !== 1 ? 's' : ''}
+          </span>
         </div>
       </div>
 
       {/* Grid of Biographies */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-6)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 'var(--space-6)' }}>
         {filteredBiographies.map(bio => (
           <div
             key={bio.id}
@@ -101,47 +120,51 @@ export const BiographyLibrary: React.FC<BiographyLibraryProps> = ({
             }}
           >
             <div>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
+              {/* Card Top Header */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', marginBottom: 'var(--space-3)' }}>
                 <div>
-                  <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>{bio.name}</h2>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-secondary)', marginTop: '2px' }}>
+                  <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>
+                    {bio.name}
+                  </h2>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--color-accent-secondary)', fontWeight: 600, marginTop: '2px' }}>
                     {bio.context}
                   </div>
                 </div>
-                <span className="badge badge-green" style={{ fontSize: '0.65rem' }}>
+                <span className="badge badge-green" style={{ fontSize: '0.68rem', padding: '3px 8px' }}>
                   ✓ {bio.reviewStatus}
                 </span>
               </div>
 
-              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', lineHeight: 1.5, marginBottom: 'var(--space-4)' }}>
+              {/* Bio Summary */}
+              <p style={{ fontSize: '0.88rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: 'var(--space-4)' }}>
                 {bio.shortBio}
               </p>
 
-              {/* Sample Top Lesson Preview */}
+              {/* Core Principle Excerpt Box */}
               {bio.lessons.length > 0 && (
                 <div style={{
-                  padding: '10px 12px',
-                  borderRadius: 'var(--radius-md)',
-                  background: 'rgba(0, 0, 0, 0.2)',
-                  border: '1px solid rgba(255, 255, 255, 0.05)',
+                  padding: '12px 14px',
+                  borderRadius: 'var(--radius-lg)',
+                  background: 'rgba(0, 0, 0, 0.3)',
+                  border: '1px solid rgba(255, 255, 255, 0.06)',
                   marginBottom: 'var(--space-4)'
                 }}>
-                  <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--color-accent-primary)', fontWeight: 600 }}>
-                    Core Principle:
+                  <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--color-accent-primary)', fontWeight: 700, letterSpacing: '0.04em' }}>
+                    Key Principle:
                   </div>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-primary)', marginTop: '2px' }}>
+                  <div style={{ fontSize: '0.825rem', fontWeight: 700, color: '#f8fafc', marginTop: '2px' }}>
                     {bio.lessons[0].title}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '4px', lineHeight: 1.4 }}>
-                    {bio.lessons[0].suggestedLesson.slice(0, 110)}...
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '4px', lineHeight: 1.45 }}>
+                    {bio.lessons[0].suggestedLesson.slice(0, 115)}...
                   </div>
                 </div>
               )}
 
               {/* Topic tags */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: 'var(--space-4)' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: 'var(--space-4)' }}>
                 {bio.topicTags.map(t => (
-                  <span key={t} className="badge" style={{ fontSize: '0.65rem' }}>
+                  <span key={t} className="badge badge-indigo" style={{ fontSize: '0.68rem' }}>
                     #{t}
                   </span>
                 ))}
@@ -149,9 +172,9 @@ export const BiographyLibrary: React.FC<BiographyLibraryProps> = ({
             </div>
 
             {/* Card Footer */}
-            <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
               <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                📖 {bio.sources.length} Verified Sources · {bio.lessons.length} Lessons
+                📖 {bio.sources.length} Sources · {bio.lessons.length} Lessons
               </span>
 
               <div style={{ display: 'flex', gap: '6px' }}>
@@ -162,13 +185,13 @@ export const BiographyLibrary: React.FC<BiographyLibraryProps> = ({
                   }}
                   title="Ask Mentor about this person"
                   className="btn btn-secondary btn-sm"
-                  style={{ fontSize: '0.75rem', padding: '4px 8px' }}
+                  style={{ fontSize: '0.75rem', padding: '5px 10px' }}
                 >
                   💬 Ask Mentor
                 </button>
                 <button
                   className="btn btn-primary btn-sm"
-                  style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+                  style={{ fontSize: '0.75rem', padding: '5px 12px' }}
                 >
                   Deep Dive →
                 </button>
