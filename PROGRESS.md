@@ -163,30 +163,37 @@ flowchart TD
         UI["WelcomeScreen / ChatView / Library / Reflections / Reminders"]
         Store["Storage Layer (localStorage + Supabase Client)"]
         Speech["Web Speech Engine (STT / TTS)"]
+        TokenManager["Proxy Token Handler (X-Proxy-Token)"]
         UI --> Store
         UI --> Speech
+        UI --> TokenManager
     end
 
-    subgraph Security ["Dual-Mode Security Layer"]
-        ProxyRouter{"Is Server Proxy Available?"}
-        Store --> ProxyRouter
+    subgraph SecurityGate ["Zero-Trust Security & Defense Layer"]
+        RateLimiter["express-rate-limit (120 req / 30 LLM per 15m)"]
+        TokenValidator["Token Validator (crypto.timingSafeEqual)"]
+        HelmetHeaders["Helmet (CSP: frameSrc 'none', noSniff, HSTS)"]
+        ModelFilter["Model Whitelist & Payload Clamp"]
+        RateLimiter --> TokenValidator --> ModelFilter
     end
 
     subgraph Backend ["Node.js Express Server (Port 3000)"]
-        HealthAPI["/api/health"]
-        TestAPI["/api/groq/test"]
+        SessionAPI["/api/session (Issue Badge)"]
+        HealthAPI["/api/health (Security Telemetry)"]
+        TestAPI["/api/groq/test (Authenticated Test)"]
         ChatProxy["/api/groq/chat (SSE Stream)"]
         StaticServe["SPA Static File Hosting (/dist)"]
     end
 
     subgraph Cloud ["External Cloud Services"]
         Groq["Groq Cloud LLM (openai/gpt-oss-120b, qwen3.8-27b)"]
-        Supabase["Supabase PostgreSQL + Auth (RLS Protected)"]
+        Supabase["Supabase PostgreSQL (HTTPS Enforced + RLS)"]
         Render["Render Web Service (Continuous Deployment)"]
     end
 
-    ProxyRouter -- "Yes (Production / Proxy Mode)" --> ChatProxy
-    ProxyRouter -- "No (BYOK Local Mode)" --> Groq
+    TokenManager -- "1. Fetch Badge" --> SessionAPI
+    TokenManager -- "2. Authenticated Request" --> SecurityGate
+    SecurityGate --> ChatProxy
     ChatProxy --> Groq
     Store <--> Supabase
     Render --> Backend
@@ -228,12 +235,13 @@ flowchart TD
 ---
 
 ## 🔮 Upcoming Milestones & Roadmap
-- [ ] **Stage 6: Multilingual Localizations & Audio Voiceover**:
+- [x] **Stage 6: Enterprise Security Hardening & Zero-Trust Defense (COMPLETED)**
+- [ ] **Stage 7: Multilingual Localizations & Audio Voiceover**:
   - Add native Arabic and Urdu language toggles in the UI.
   - Pre-record or synthesize neural audio recitations for Islamic reflections and mentor quotes.
-- [ ] **Stage 7: Autonomous Daily Nudge Background Worker**:
+- [ ] **Stage 8: Autonomous Daily Nudge Background Worker**:
   - Implement Web Push API / Service Worker background push notifications.
   - Send morning wisdom digests based on user's selected study/career lens.
-- [ ] **Stage 8: Community Biographies & Contribution System**:
+- [ ] **Stage 9: Community Biographies & Contribution System**:
   - Allow users to submit new historical mentor profiles with citation review workflows.
 
