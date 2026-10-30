@@ -507,14 +507,27 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
 
         {/* Data & Privacy Controls */}
-        <div className="card" style={{ padding: 'var(--space-6)' }}>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 'var(--space-4)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>🔒</span> Data Sovereignty & Backups
+        <div className="card" style={{ padding: 'var(--space-6)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 'var(--space-3)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>🛡️</span> Privacy, Security & Data Sovereignty
           </h2>
 
-          <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.5, marginBottom: 'var(--space-4)' }}>
-            All your chat logs, preferences, and reminders are stored strictly in your local browser storage. No tracking scripts or ad analytics are loaded.
+          <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.5, marginBottom: 'var(--space-3)' }}>
+            All your chat logs, biographical reflections, and reminder schedules are stored in your browser's private local storage. No tracking pixels, third-party marketing cookies, or telemetry scripts are embedded.
           </p>
+
+          <div style={{
+            padding: '10px 14px',
+            background: 'rgba(239, 68, 68, 0.08)',
+            border: '1px solid rgba(239, 68, 68, 0.25)',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: 'var(--space-4)',
+            fontSize: '0.8rem',
+            color: '#fca5a5',
+            lineHeight: 1.45
+          }}>
+            <strong>⚠️ Shared / Public Computer Notice:</strong> Anyone with physical access to this browser profile can view your conversations. If you are on a public, university, or shared device, click <em>Wipe Session & All Local Data</em> when finishing your session.
+          </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
             <button
@@ -530,11 +543,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 className="btn btn-secondary btn-sm"
                 style={{ color: 'var(--color-error)' }}
               >
-                ⚠️ Reset All Local Data
+                🗑️ Wipe Session & All Local Data
               </button>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--color-error)' }}>Are you sure?</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-error)' }}>Are you sure? This immediately deletes all chats and settings from this browser.</span>
                 <button
                   onClick={() => {
                     onResetAllData();
@@ -543,7 +556,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   className="btn btn-primary btn-sm"
                   style={{ background: 'var(--color-error)' }}
                 >
-                  Yes, Delete Everything
+                  Yes, Wipe Everything
                 </button>
                 <button
                   onClick={() => setConfirmReset(false)}

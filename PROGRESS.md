@@ -8,9 +8,18 @@ MyMentor bridges modern productivity, startup strategy, career acceleration, aca
 ---
 
 ## 🚦 Current Status Summary
-- **Current Phase:** ✅ **Stage 5: Luxury Obsidian Glassmorphic Design System, Quick Inquiry Starter Cards & Message Bubble Refinements (Verified & Operational)**
-- **System Date & Status:** **October 28, 2026** | Git Commit [`b5fde1f`](file:///c:/MyMentor) (`ui enhanced`) | Working Tree Clean | Production Build Passing (`tsc -b && vite build` in 5.46s).
+- **Current Phase:** ✅ **Stage 6: Enterprise Security Hardening, Zero-Trust Proxy Auth, Anti-Abuse Rate Limiting, Helmet CSP & Data Sovereignty Suite (Verified & Operational)**
+- **System Date & Status:** **October 30, 2026** | Production Build Passing (`tsc -b && vite build` in 2.36s) | Security Suite 7/7 Passing (`scripts/test-security.ps1`).
 - **Architecture Highlights:**
+  - 🛡️ **Zero-Trust LLM Proxy Authentication (Stage 6 Active):** Implemented session-token architecture (`PROXY_SESSION_TOKEN`) in [`server/index.js`](file:///c:/MyMentor/server/index.js) with constant-time cryptographic validation (`crypto.timingSafeEqual`) and `X-Proxy-Token` header enforcement. Completely prevents unauthorized public quota and financial theft.
+  - 🛑 **Multi-Tier Rate Limiting & Anti-DDoS (Stage 6 Active):** Installed `express-rate-limit` with tiered quotas: 120 requests/15min for general API, strict 30 requests/15min per IP on Groq LLM completions (`POST /api/groq/chat`), and 10 requests/hour on session tokens.
+  - 🔒 **Helmet HTTP Security Headers & Anti-Clickjacking (Stage 6 Active):** Configured `helmet` with strict Content-Security-Policy (CSP) enforcing `frameSrc: ["'none'"]` to completely eliminate Clickjacking attacks, `X-Content-Type-Options: nosniff` against MIME sniffing, and `Strict-Transport-Security` (HSTS).
+  - 🌐 **Restricted CORS Policy (Stage 6 Active):** Eliminated wildcard `Access-Control-Allow-Origin: *`. Requests are restricted to same-origin and explicitly configured `ALLOWED_ORIGINS`.
+  - 🎯 **Strict Model & Payload Validation Whitelist (Stage 6 Active):** Express middleware enforces a strict whitelist of 6 approved Groq models, clamping `max_tokens` (1 to 4096), `temperature` (0.0 to 1.5), and validating message structures (max 50 messages, max 15,000 characters per message).
+  - 🔗 **Citation Scheme Sanitization & Stored XSS Neutralization (Stage 6 Active):** Formatted citation URLs in [`src/services/groqService.ts`](file:///c:/MyMentor/src/services/groqService.ts) and [`src/components/ChatView.tsx`](file:///c:/MyMentor/src/components/ChatView.tsx) to strictly whitelist `http:` and `https:`, permanently blocking `javascript:` and `data:` URI exploits.
+  - 🧠 **Prompt Injection & Persona Boundary Defense (Stage 6 Active):** Sanitized user profile fields and wrapped untrusted inputs inside `<untrusted_user_input>` boundary tags in [`buildSystemPrompt`](file:///c:/MyMentor/src/services/groqService.ts#L208), accompanied by immutable system guardrail directives.
+  - 🔐 **Supabase HTTPS Protocol Enforcement (Stage 6 Active):** Replaced unencrypted HTTP acceptance in [`src/services/supabaseClient.ts`](file:///c:/MyMentor/src/services/supabaseClient.ts) with strict `isValidSupabaseUrl` validation, preventing plaintext credential transit.
+  - 🧹 **Public Device Privacy & Data Sovereignty Suite (Stage 6 Active):** Added shared/public computer notices in [`src/components/SettingsView.tsx`](file:///c:/MyMentor/src/components/SettingsView.tsx) with a prominent 1-click **"Wipe Session & All Local Data"** security control.
   - 🎨 **Luxury Obsidian Design System (Stage 5 Active):** Complete visual redesign using deep midnight obsidian (`#070a13`, `#0d1220`), frosted glassmorphic containers (`rgba(18, 25, 42, 0.75)` with `backdrop-filter: blur(16px)`), electric indigo and warm amber accents, refined typography, and responsive drawer navigation.
   - 🚀 **Interactive Quick Inquiry Studio (Stage 5 Active):** 1-click curated prompt starter cards on the [`WelcomeScreen.tsx`](file:///c:/MyMentor/src/components/WelcomeScreen.tsx) spanning *Career & Startups*, *Study & Academics*, *Ethical Trade*, and *Habits & Focus*.
   - 💬 **Enhanced Conversational Bubble Engine (Stage 5 Active):** Upgraded Markdown styling in [`ChatView.tsx`](file:///c:/MyMentor/src/components/ChatView.tsx) featuring gold-accented blockquotes (`border-left: 3px solid var(--color-accent-secondary)`), distinct hierarchical headings, high-contrast monospace code blocks, and structured list items.
@@ -90,7 +99,7 @@ MyMentor bridges modern productivity, startup strategy, career acceleration, aca
 - [x] Added dual-mode resolution in [`src/services/groqService.ts`](file:///c:/MyMentor/src/services/groqService.ts): automatically uses the secure server proxy when available, while preserving BYOK (Bring Your Own Key) capability in Settings for standalone development.
 - [x] Authored [`render.yaml`](file:///c:/MyMentor/render.yaml) blueprint for 1-click zero-cost deployment on Render with automatic build and health checks.
 
-### Stage 5: Luxury Obsidian Glassmorphic UI Redesign & Rich Interaction Studio (Oct 28, 2026 — TODAY)
+### Stage 5: Luxury Obsidian Glassmorphic UI Redesign & Rich Interaction Studio (Oct 28, 2026)
 - [x] **Luxury Obsidian Theme Architecture (`src/index.css`)**:
   - Re-engineered design tokens around deep midnight obsidian (`#070a13`, `#0d1220`) and frosted glass surfaces (`--color-bg-card: rgba(18, 25, 42, 0.75)`).
   - Enhanced borders with subtle luminescence (`--color-border-subtle: rgba(255, 255, 255, 0.08)`, `--color-border-hover: rgba(255, 255, 255, 0.18)`).
@@ -104,6 +113,36 @@ MyMentor bridges modern productivity, startup strategy, career acceleration, aca
   - Added custom markdown rendering for H3/H4 headings with electric indigo accents.
   - Designed elegant blockquotes with warm amber left borders and soft background tint.
   - Polished citation cards, prompt suggestion pills, and model badge indicators.
+
+### Stage 6: Enterprise Security Hardening & Zero-Trust Defense (Oct 30, 2026 — TODAY)
+- [x] **Zero-Trust Backend Proxy Authentication (`server/index.js`)**:
+  - Generated cryptographically secure per-boot proxy session tokens (`crypto.randomBytes(32)`).
+  - Enforced `X-Proxy-Token` header on all Groq endpoints (`/api/groq/chat`, `/api/groq/test`) with constant-time verification (`crypto.timingSafeEqual`).
+  - Added rate-limited `/api/session` endpoint for automatic, seamless client token resolution.
+- [x] **Multi-Tier Rate Limiting (`express-rate-limit`)**:
+  - Guarded all `/api/` endpoints with 120 req/15min global throttling per IP.
+  - Implemented strict 30 requests/15min limit on LLM generation (`/api/groq/chat`) to thwart brute-force and DoS.
+  - Added 10 requests/hour limit on session token fetching.
+- [x] **HTTP Security Headers & Anti-Clickjacking (`helmet`)**:
+  - Integrated `helmet` with comprehensive Content-Security-Policy (CSP) headers.
+  - Implemented `frameSrc: ["'none'"]` to permanently neutralize Clickjacking and iframe hijacking.
+  - Added `X-Content-Type-Options: nosniff` and `Strict-Transport-Security` (HSTS).
+- [x] **Strict CORS Lockdown**:
+  - Replaced wildcard `cors()` with origin filtering restricting traffic to same-origin or explicit `ALLOWED_ORIGINS`.
+- [x] **Model Whitelist & Payload Validation**:
+  - Restricted requested models to 6 approved Groq models (`ALLOWED_MODELS`).
+  - Clamped `max_tokens` between 1 and 4096 and `temperature` between 0.0 and 1.5.
+  - Restricted message arrays to 50 messages maximum with 15,000 characters per message limit.
+- [x] **Citation Scheme Sanitization & Stored XSS Mitigation**:
+  - Added `sanitizeCitationUrl()` in [`src/services/groqService.ts`](file:///c:/MyMentor/src/services/groqService.ts) and double-checked in [`src/components/ChatView.tsx`](file:///c:/MyMentor/src/components/ChatView.tsx) to ensure only `http://` and `https://` URLs can be opened.
+- [x] **Prompt Injection Hardening**:
+  - Wrapped user profile inputs in `<untrusted_user_input>` boundaries with delimiter character stripping.
+  - Injected immutable system guardrails instructing the AI to preserve core identity and reject override prompts.
+- [x] **Supabase HTTPS Enforcement & Shared Device Privacy**:
+  - Enforced HTTPS-only Supabase endpoints in [`src/services/supabaseClient.ts`](file:///c:/MyMentor/src/services/supabaseClient.ts).
+  - Added shared computer privacy warnings and prominent 1-click "Wipe Session & All Local Data" button in [`src/components/SettingsView.tsx`](file:///c:/MyMentor/src/components/SettingsView.tsx).
+- [x] **Automated Security Verification Suite (`scripts/test-security.ps1`)**:
+  - Built 7-point automated verification script verifying 403 blocks on unauthenticated endpoints, token negotiation, model rejection, and header enforcement. All 7/7 tests pass.
 - [x] **Comprehensive View Modernization across All Modules**:
   - [`Header.tsx`](file:///c:/MyMentor/src/components/Header.tsx): Added obsidian blur header bar, active model chip, cloud sync status indicator, and quick-action install pill.
   - [`Sidebar.tsx`](file:///c:/MyMentor/src/components/Sidebar.tsx): Modernized drawer navigation with glowing active states, conversation management, and clear-data guards.

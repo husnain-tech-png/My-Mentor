@@ -12,6 +12,26 @@ let cachedClient: SupabaseClient | null = null;
 let currentClientKey = '';
 
 /**
+ * Validates that a Supabase URL is secure:
+ * - Must be a valid URL
+ * - Must use HTTPS (HTTP is strictly forbidden, except for local testing on localhost / 127.0.0.1)
+ * - Prohibits javascript:, data:, and all other unsafe protocols
+ */
+export const isValidSupabaseUrl = (url: string): boolean => {
+  if (!url || typeof url !== 'string') return false;
+  try {
+    const parsed = new URL(url.trim());
+    if (parsed.protocol === 'https:') return true;
+    if (parsed.protocol === 'http:' && (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1')) {
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+};
+
+/**
  * Returns the currently active Supabase configuration,
  * checking localStorage overrides first, then falling back to Vite environment variables.
  */
@@ -24,8 +44,11 @@ export const getSupabaseConfig = (): SupabaseConfig => {
   const storedAutoSync = localStorage.getItem(STORAGE_KEYS.AUTO_SYNC);
   const storedLastSync = localStorage.getItem(STORAGE_KEYS.LAST_SYNC);
 
+  const rawUrl = storedUrl.trim() || envUrl.trim();
+  const safeUrl = isValidSupabaseUrl(rawUrl) ? rawUrl : '';
+
   return {
-    url: storedUrl.trim() || envUrl.trim(),
+    url: safeUrl,
     anonKey: storedKey.trim() || envKey.trim(),
     autoSync: storedAutoSync !== null ? storedAutoSync === 'true' : true,
     lastSyncedAt: storedLastSync ? parseInt(storedLastSync, 10) : undefined
@@ -34,9 +57,15 @@ export const getSupabaseConfig = (): SupabaseConfig => {
 
 /**
  * Saves customized Supabase connection credentials and resets the client instance.
+ * Throws an error if the URL fails security validation.
  */
 export const saveSupabaseConfig = (url: string, anonKey: string, autoSync = true): void => {
-  localStorage.setItem(STORAGE_KEYS.URL, url.trim());
+  const trimmedUrl = url.trim();
+  if (!isValidSupabaseUrl(trimmedUrl)) {
+    throw new Error('Security Error: Supabase URL must use HTTPS (e.g., https://your-project.supabase.co).');
+  }
+
+  localStorage.setItem(STORAGE_KEYS.URL, trimmedUrl);
   localStorage.setItem(STORAGE_KEYS.ANON_KEY, anonKey.trim());
   localStorage.setItem(STORAGE_KEYS.AUTO_SYNC, autoSync ? 'true' : 'false');
   cachedClient = null;
@@ -71,8 +100,8 @@ export const getSupabase = (): SupabaseClient | null => {
     return null;
   }
 
-  // Validate URL format
-  if (!config.url.startsWith('http://') && !config.url.startsWith('https://')) {
+  // Validate URL format and protocol security
+  if (!isValidSupabaseUrl(config.url)) {
     return null;
   }
 
@@ -112,8 +141,8 @@ export const testSupabaseConnection = async (
   const trimmedUrl = url.trim();
   const trimmedKey = anonKey.trim();
 
-  if (!trimmedUrl.startsWith('https://') && !trimmedUrl.startsWith('http://')) {
-    return { ok: false, message: 'Project URL must begin with https:// or http://' };
+  if (!isValidSupabaseUrl(trimmedUrl)) {
+    return { ok: false, message: 'Security Error: Project URL must begin with https:// (e.g., https://your-project.supabase.co)' };
   }
 
   try {

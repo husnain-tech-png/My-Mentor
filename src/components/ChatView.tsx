@@ -384,7 +384,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                               </div>
                             )}
                           </div>
-                          {cite.url && (
+                          {cite.url && (cite.url.startsWith('http://') || cite.url.startsWith('https://')) && (
                             <a
                               href={cite.url}
                               target="_blank"

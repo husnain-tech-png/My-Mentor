@@ -114,9 +114,13 @@ export const SupabaseSyncModal: React.FC<SupabaseSyncModalProps> = ({
 
   // Save Credentials
   const handleSaveCredentials = () => {
-    saveSupabaseConfig(config.url, config.anonKey, config.autoSync);
-    setSaveNotice(true);
-    setTimeout(() => setSaveNotice(false), 2500);
+    try {
+      saveSupabaseConfig(config.url, config.anonKey, config.autoSync);
+      setSaveNotice(true);
+      setTimeout(() => setSaveNotice(false), 2500);
+    } catch (err: any) {
+      setTestStatus({ loading: false, ok: false, message: err?.message || 'Failed to save configuration.' });
+    }
   };
 
   // Clear Credentials
